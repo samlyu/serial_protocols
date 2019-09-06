@@ -1,2 +1,2 @@
 # serial_protocols
-implementations of serial protocols
+Implementations of serial protocols
