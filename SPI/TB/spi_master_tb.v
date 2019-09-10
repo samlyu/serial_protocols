@@ -6,9 +6,9 @@ parameter	CLK_FREQ = 50_000_000,
 			SPI_FREQ = 5_000_000,
 			DATA_WIDTH = 8,
 			CPOL = 0,	// 0: idle at 0; 1: idle at 1
-			CPHA = 0;	// 0: sample@pos, shift@neg; 1: sample@neg, shift@pos 
+			CPHA = 0;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
-reg	clk, rstn;
+reg	clk, arstn;
 reg	[DATA_WIDTH-1:0]	data_send;
 reg	spi_start;
 wire	sclk, csn, mosi;
@@ -25,15 +25,15 @@ always begin
 	#10 clk = ~clk;
 end
 
-// rstn
+// arstn
 initial begin
-	rstn = 1'b0;
-	#20	rstn = 1'b1;
+	arstn = 1'b0;
+	#20	arstn = 1'b1;
 end
 
 // miso
 generate
-	case(CPHA)
+	case(CPHA ^ CPOL)
 		0:	begin
 			always@(negedge sclk) begin
 				miso = $random;
@@ -51,7 +51,7 @@ endgenerate
 task gen_spi_start;
 begin
 	spi_start = 1'b0;
-	@(posedge rstn)
+	@(posedge arstn)
 		#20	spi_start = 1'b1;
 		#20	spi_start = 1'b0;
 	@(negedge spi_done)
@@ -64,7 +64,7 @@ endtask
 task gen_data_send;
 begin
 	data_send = 'd0;
-	@(posedge rstn)
+	@(posedge arstn)
 		data_send = 8'b10100101;
 	@(posedge spi_done)
 		data_send = 8'b10011010;
@@ -107,7 +107,7 @@ spi_master
 )
 DUT(
 	.clk(clk),
-	.rstn(rstn),
+	.arstn(arstn),
 	.data_send(data_send),
 	.spi_start(spi_start),
 	.sclk(sclk),
