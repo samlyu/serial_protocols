@@ -6,10 +6,10 @@ module spi_master
 				SPI_FREQ = 5_000_000,
 				DATA_WIDTH = 8,
 				CPOL = 0,	// 0: idle at 0; 1: idle at 1
-				CPHA = 0	// 0: sample@pos, shift@neg; 1: sample@neg, shift@pos 
+				CPHA = 0	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 )
 (
-	input	clk, rstn,
+	input	clk, arstn,
 	input	[DATA_WIDTH-1:0]	data_send,
 	input	spi_start,
 	output	reg	sclk, csn,
@@ -20,26 +20,26 @@ module spi_master
 );
 
 // FSM
-localparam	IDLE = 2'd0, LOAD = 2'd1, SHIFT = 2'd2, DONE = 2'd3;
+localparam	IDLE = 2'd0, LOAD = 2'd1, PROC = 2'd2, DONE = 2'd3;
 reg [1:0]	current_state, next_state;
 
-// Generate sclk
-localparam	FREQ_COUNT = CLK_FREQ / SPI_FREQ - 1;
+// generate sclk
+localparam	FREQ_COUNT = CLK_FREQ / SPI_FREQ / 2 - 1;
 localparam	COUNT_WIDTH = log2(FREQ_COUNT);
 reg	clk_count_en;
 reg [COUNT_WIDTH-1:0]	clk_count;
-reg	[1:0]	sclk_reg;
+reg	sclk_reg;
 wire	sclk_pos, sclk_neg;
 
-// Process data
+// process data
 localparam	SHIFT_WIDTH = log2(DATA_WIDTH);
-reg [SHIFT_WIDTH-1:0]	shift_count;
+reg [SHIFT_WIDTH-1:0]	shift_count, sample_count;
 reg [DATA_WIDTH-1:0]	data_reg;
 wire	shift_en, sample_en;
 
 // clk_count
-always@(posedge clk) begin
-	if(~rstn)
+always@(posedge clk or negedge arstn) begin
+	if(~arstn)
 		clk_count <= 'd0;
 	else begin
 		if(clk_count_en) begin
@@ -55,8 +55,8 @@ always@(posedge clk) begin
 end
 
 // sclk
-always@(posedge clk) begin
-	if(~rstn)
+always@(posedge clk or negedge arstn) begin
+	if(~arstn)
 		sclk <= CPOL;
 	else begin
 		if(clk_count_en) begin
@@ -70,23 +70,21 @@ always@(posedge clk) begin
 end
 
 // sclk edge capture
-always@(posedge clk) begin
-	if(~rstn) begin
-		sclk_reg[0] <= CPOL;
-		sclk_reg[1] <= CPOL;
+always@(posedge clk or negedge arstn) begin
+	if(~arstn) begin
+		sclk_reg <= CPOL;
 	end
 	else if(clk_count_en) begin
-		sclk_reg[0] <= sclk;
-		sclk_reg[1] <= sclk_reg[0];
+		sclk_reg <= sclk;
 	end
 end
 
-assign sclk_pos = sclk_reg[0] & ~sclk_reg[1];
-assign sclk_neg = ~sclk_reg[0] & sclk_reg[1];
+assign sclk_pos = sclk & ~sclk_reg;
+assign sclk_neg = ~sclk & sclk_reg;
 
 // data timing
 generate
-	case(CPHA)
+	case(CPHA ^ CPOL)
 		0:	begin
 			assign sample_en = sclk_pos;
 			assign shift_en = sclk_neg;
@@ -106,27 +104,29 @@ endgenerate
 always@(*) begin
 	case(current_state)
 		IDLE:	next_state = spi_start ? LOAD : IDLE;
-		LOAD:	next_state = SHIFT;
-		SHIFT:	next_state = (shift_count == DATA_WIDTH) ? DONE : SHIFT;
+		LOAD:	next_state = PROC;
+		PROC:	next_state = (shift_count == DATA_WIDTH && sample_count == DATA_WIDTH) ? DONE : PROC;
 		DONE:	next_state = IDLE;
 		default:	next_state = IDLE;
 	endcase
 end
 // FSM sequential
-always@(posedge clk) begin
-	if(~rstn)
+always@(posedge clk or negedge arstn) begin
+	if(~arstn)
 		current_state <= IDLE;
 	else
 		current_state <= next_state;
 end
 // FSM output to ctrl signals
-always@(posedge clk) begin
-	if(~rstn) begin
+always@(posedge clk or negedge arstn) begin
+	if(~arstn) begin
 		clk_count_en <= 1'b0;
 		spi_done <= 1'b0;
 		csn <= 1'b1;
 		shift_count <= 'd0;
+		sample_count <= 'd0;
 		data_reg <= 'd0;
+		data_recv <= 'd0;
 	end
 	else begin
 		case(next_state)
@@ -135,16 +135,20 @@ always@(posedge clk) begin
 				spi_done <= 1'b0;
 				csn <= 1'b1;
 				shift_count <= 'd0;
+				sample_count <= 'd0;
 				data_reg <= 'd0;
+				data_recv <= 'd0;
 			end
 			LOAD:	begin
 				clk_count_en <= 1'b1;
 				spi_done <= 1'b0;
 				csn <= 1'b0;
 				shift_count <= 'd0;
+				sample_count <= 'd0;
 				data_reg <= data_send;
+				data_recv <= 'd0;
 			end
-			SHIFT:	begin
+			PROC:	begin
 				clk_count_en <= 1'b1;
 				spi_done <= 1'b0;
 				csn <= 1'b0;
@@ -152,20 +156,28 @@ always@(posedge clk) begin
 					shift_count <= shift_count + 1'b1;
 					data_reg <= {data_reg[DATA_WIDTH-1-1:0], 1'b0};
 				end
+				if(sample_en) begin
+					sample_count <= sample_count + 1'b1;
+					data_recv <= {data_recv[DATA_WIDTH-1-1:0], miso};
+				end
 			end
 			DONE:	begin
 				clk_count_en <= 1'b0;
 				spi_done <= 1'b1;
 				csn <= 1'b1;
 				shift_count <= 'd0;
+				sample_count <= 'd0;
 				data_reg <= 'd0;
+				// data_recv <= 'd0;
 			end
 			default:	begin
 				clk_count_en <= 1'b0;
 				spi_done <= 1'b0;
 				csn <= 1'b1;
 				shift_count <= 'd0;
+				sample_count <= 'd0;
 				data_reg <= 'd0;
+				data_recv <= 'd0;
 			end
 		endcase
 	end
@@ -173,16 +185,6 @@ end
 
 // mosi output
 assign mosi = data_reg[DATA_WIDTH-1];
-
-// miso input
-always@(posedge clk) begin
-	if(~rstn)
-		data_recv <= 'd0;
-	else begin
-		if(sample_en)
-			data_recv <= {data_recv[DATA_WIDTH-1:0],miso};
-	end
-end
 
 function integer log2(input integer x);
 begin
