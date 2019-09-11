@@ -13,9 +13,6 @@ reg	spi_m_start;
 reg	[DATA_WIDTH-1:0]	data_m_send, data_s_send;
 wire	spi_m_done, spi_s_done;
 wire	[DATA_WIDTH-1:0]	data_m_recv, data_s_recv;
-
-// reg	[1:0]	spi_done_reg;
-// wire	spi_done_pos;
 reg [DATA_WIDTH-1:0]	data_m_send_reg, data_s_send_reg;
 
 // clk
@@ -72,17 +69,13 @@ end
 endtask
 
 // monitor signals
-// always@(posedge clk) begin
-// 	spi_done_reg[0] <= spi_s_done;
-// 	spi_done_reg[1] <= spi_done_reg[0];
-// end
-// assign spi_done_pos = spi_done_reg[0] & ~spi_done_reg[1];
 always@(posedge clk) begin
 	if(spi_m_start) begin
 		data_m_send_reg <= data_m_send;
 		data_s_send_reg <= data_s_send;
 	end
 end
+
 // check mosi
 always@(posedge clk) begin
 	if(spi_m_done & spi_s_done) begin
@@ -92,6 +85,7 @@ always@(posedge clk) begin
 			$display("FAIL: master = %h, slave = %h", data_m_send_reg, data_s_recv);
 	end
 end
+
 // check miso
 always@(posedge clk) begin
 	if(spi_m_done & spi_s_done) begin
