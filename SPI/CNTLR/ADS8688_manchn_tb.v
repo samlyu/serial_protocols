@@ -21,7 +21,7 @@ end
 // arstn
 initial begin
 	arstn = 1'b0;
-	#(CLK_CYCLE)	arstn = 1'b1;
+	#(CLK_CYCLE*3/2)	arstn = 1'b1;
 end
 
 // manchn_start

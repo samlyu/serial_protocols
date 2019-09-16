@@ -31,8 +31,6 @@ reg [SHIFT_WIDTH-1:0]	shift_count, sample_count;
 reg [DATA_WIDTH-1:0]	data_reg;
 wire	shift_en, sample_en;
 
-
-
 // sclk edge capture
 always@(posedge clk or negedge arstn) begin
 	if(~arstn) begin

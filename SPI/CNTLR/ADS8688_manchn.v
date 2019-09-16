@@ -16,6 +16,10 @@ reg		flag;
 reg		done_reg;
 wire	done_neg;
 
+parameter COUNT_NUM = 10;
+reg 	[3:0]	count;
+reg 			count_flag;
+
 always@(posedge clk or negedge arstn) begin
 	if(~arstn)
 		flag <= 1'b0;
@@ -23,7 +27,21 @@ always@(posedge clk or negedge arstn) begin
 		flag <= ~flag;
 end
 
-assign spi_start = (~flag) ? manchn_start : done_neg;
+assign spi_start = (~flag) ? manchn_start : (count == COUNT_NUM - 1);
+
+always@(posedge clk or negedge arstn) begin
+	if(~arstn)
+		count_flag <= 1'b0;
+	else if(done_neg)
+		count_flag <= 1'b1;
+end
+
+always@(posedge clk or negedge arstn) begin
+	if(~arstn)
+		count <= 'd0;
+	else if(count_flag && count < COUNT_NUM)
+		count <= count + 1'b1;
+end
 
 always@(posedge clk or negedge arstn) begin
 	if(~arstn)
