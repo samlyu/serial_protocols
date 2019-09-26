@@ -14,9 +14,12 @@ reg	rw;
 reg	[8-1:0]	data_send;
 wire	i2c_done;
 wire	[8-1:0]	data_recv;
+wire	data_recv_done;
+reg	sda_in, sda_in_en;
+
 wire	sda, scl;
 
-reg	sda_in;
+assign sda = sda_in_en ? sda_in : 1'bz;
 
 // clk
 initial begin
@@ -27,51 +30,134 @@ end
 // arstn
 initial begin
 	arstn = 1'b0;
-	#(CLK_CYCLE*70)	arstn = 1'b1;
+	#(CLK_CYCLE*75)	arstn = 1'b1;
 end
 
-task gen_i2c_start;
+/*
+task test_WR_2_same;
+
+task test_WR_2_diff;
+
+task test_RD_2_same;
+
+task test_RD_2_diff;
+
+task test_WR_DR;
+*/
+
+task gen_i2c_start_1;
 begin
 	i2c_start = 1'b0;
 	@(posedge arstn)
-		#(CLK_CYCLE*3/2) i2c_start = 1'b1;
-		#(CLK_CYCLE) i2c_start = 1'b0;
+	@(posedge clk)
+		#(CLK_CYCLE*10)	i2c_start = 1'b1;
+		#(CLK_CYCLE)	i2c_start = 1'b0;
 end
 endtask
 
-task gen_data_send;
+task gen_addr_WR;
 begin
-	addr = 'd0;
-	rw = 1'b0;
-	data_send = 'd0;
-	@(posedge arstn)
+	@(posedge i2c_start)
 		addr = 7'b1100101;
 		rw = 1'b0;
-		data_send = 8'b01100011;
-	@(negedge i2c_done)
-		#(CLK_CYCLE*70) $finish;
 end
 endtask
 
-task gen_sack1;
+task gen_addr_RD;
 begin
-	sda_in = 1'b1;
-	@(negedge i2c_start)
-		#(CLK_CYCLE*DIV*10-CLK_CYCLE)	sda_in = 1'b0;
-		#(CLK_CYCLE*DIV+CLK_CYCLE)	sda_in = 1'b1;
-		#(CLK_CYCLE*DIV*8)	sda_in = 1'b0;
-		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
-
+	@(posedge i2c_start)
+		addr = 7'b1100101;
+		rw = 1'b1;
 end
 endtask
 
-assign sda = ~sda_in ? sda_in : 1'bz;
+task gen_data_send_1;
+begin
+	@(posedge i2c_start)
+		data_send = 8'b01100011;
+end
+endtask
 
-initial fork
-	gen_data_send;
-	gen_i2c_start;
-	gen_sack1;
+task gen_data_recv_1;
+begin
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV*11)
+		sda_in_en = 1'b1;	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in_en = 1'b0;
+end
+endtask
+
+task gen_ACK_WR_1;
+begin
+	sda_in_en = 1'b0;
+	//sda_in = 1'b1;
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV*10)	// SACK1
+			sda_in_en = 1'b1;
+			sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)
+			sda_in_en = 1'b0;
+			//sda_in = 1'b1;
+		#(CLK_CYCLE*DIV*8)	// SACK2
+			sda_in_en = 1'b1;
+			sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)
+			sda_in_en = 1'b0;
+			//sda_in = 1'b1;
+end
+endtask
+
+task gen_ACK_RD_1;
+begin
+	sda_in_en = 1'b0;
+	//sda_in = 1'b1;
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV*10)	// SACK1
+			sda_in_en = 1'b1;
+			sda_in = 1'b0;
+		//#(CLK_CYCLE*DIV)
+			//sda_in_en = 1'b0;
+			//sda_in = 1'b1;
+end
+endtask
+
+task gen_finish;
+begin
+	@(negedge i2c_done)
+		#(CLK_CYCLE*75)	$finish;
+end
+endtask
+
+task test_WR_1;
+fork
+	gen_i2c_start_1;
+	gen_addr_WR;
+	gen_data_send_1;
+	gen_ACK_WR_1;
 join
+endtask
+
+task test_RD_1;
+fork
+	gen_i2c_start_1;
+	gen_addr_RD;
+	gen_data_recv_1;
+	gen_ACK_RD_1;
+join
+endtask
+
+initial begin
+	//test_WR_1;
+	test_RD_1;
+	gen_finish;
+end
 
 i2c_master
 #(
@@ -87,6 +173,7 @@ DUT(
 	.data_send(data_send),
 	.i2c_done(i2c_done),
 	.data_recv(data_recv),
+	.data_recv_done(data_recv_done),
 	.sda(sda),
 	.scl(scl)
 );

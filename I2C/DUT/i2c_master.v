@@ -212,7 +212,7 @@ always@(posedge clk_sda or negedge arstn) begin
 			end
 			MACK:	begin
 				bit_count <= 'd0;
-				sda_reg <= 1'b1;
+				sda_reg <= 1'b0;
 			end
 			STOP:	begin
 				bit_count <= 'd0;
