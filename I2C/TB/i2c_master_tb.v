@@ -33,19 +33,7 @@ initial begin
 	#(CLK_CYCLE*75)	arstn = 1'b1;
 end
 
-/*
-task test_WR_2_same;
-
-task test_WR_2_diff;
-
-task test_RD_2_same;
-
-task test_RD_2_diff;
-
-task test_WR_DR;
-*/
-
-task gen_i2c_start_1;
+task gen_i2c_start_1st;
 begin
 	i2c_start = 1'b0;
 	@(posedge arstn)
@@ -55,10 +43,27 @@ begin
 end
 endtask
 
+task gen_i2c_start_2nd;
+begin
+	@(posedge i2c_start)
+		#(CLK_CYCLE*DIV*19)	i2c_start = 1'b1;
+		#(CLK_CYCLE)	i2c_start = 1'b0;
+end
+endtask
+
 task gen_addr_WR;
 begin
 	@(posedge i2c_start)
-		addr = 7'b1100101;
+		addr = 7'b0100101;
+		rw = 1'b0;
+end
+endtask
+
+task gen_addr_WR_diff;
+begin
+	gen_addr_WR;
+	@(posedge i2c_start)
+		addr = 7'b1001100;
 		rw = 1'b0;
 end
 endtask
@@ -66,8 +71,24 @@ endtask
 task gen_addr_RD;
 begin
 	@(posedge i2c_start)
-		addr = 7'b1100101;
+		addr = 7'b0100101;
 		rw = 1'b1;
+end
+endtask
+
+task gen_addr_RD_diff;
+begin
+	gen_addr_RD;
+	@(posedge i2c_start)
+		addr = 7'b1001100;
+		rw = 1'b1;
+end
+endtask
+
+task gen_addr_WR_RD;
+begin
+	gen_addr_WR;
+	gen_addr_RD;
 end
 endtask
 
@@ -75,6 +96,14 @@ task gen_data_send_1;
 begin
 	@(posedge i2c_start)
 		data_send = 8'b01100011;
+end
+endtask
+
+task gen_data_send_2;
+begin
+	gen_data_send_1;
+	@(posedge i2c_start)
+		data_send = 8'b10011101;
 end
 endtask
 
@@ -94,37 +123,132 @@ begin
 end
 endtask
 
+task gen_data_recv_2;
+begin
+	gen_data_recv_1;
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV)
+		sda_in_en = 1'b1;	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in_en = 1'b0;
+end
+endtask
+
+task gen_data_recv_2_diff;
+begin
+	gen_data_recv_1;
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV*11)
+		sda_in_en = 1'b1;	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in_en = 1'b0;
+end
+endtask
+
+task gen_data_recv_2nd;
+begin
+	@(negedge i2c_start);
+	@(negedge i2c_start)
+		#(CLK_CYCLE*DIV*11)
+		sda_in_en = 1'b1;	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b0;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in = 1'b1;
+		#(CLK_CYCLE*DIV)	sda_in_en = 1'b0;
+end
+endtask
+
 task gen_ACK_WR_1;
 begin
 	sda_in_en = 1'b0;
-	//sda_in = 1'b1;
 	@(negedge i2c_start)
 		#(CLK_CYCLE*DIV*10)	// SACK1
 			sda_in_en = 1'b1;
 			sda_in = 1'b0;
 		#(CLK_CYCLE*DIV)
 			sda_in_en = 1'b0;
-			//sda_in = 1'b1;
 		#(CLK_CYCLE*DIV*8)	// SACK2
 			sda_in_en = 1'b1;
 			sda_in = 1'b0;
 		#(CLK_CYCLE*DIV)
 			sda_in_en = 1'b0;
-			//sda_in = 1'b1;
+end
+endtask
+
+task gen_ACK_WR_2;
+begin
+	gen_ACK_WR_1;
+	#(CLK_CYCLE*DIV*8)	// SACK2
+		sda_in_en = 1'b1;
+		sda_in = 1'b0;
+	#(CLK_CYCLE*DIV)
+		sda_in_en = 1'b0;
+end
+endtask
+
+task gen_ACK_WR_2_diff;
+begin
+	gen_ACK_WR_1;
+	#(CLK_CYCLE*DIV*9)	// SACK1
+		sda_in_en = 1'b1;
+		sda_in = 1'b0;
+	#(CLK_CYCLE*DIV)
+		sda_in_en = 1'b0;
+	#(CLK_CYCLE*DIV*8)	// SACK2
+		sda_in_en = 1'b1;
+		sda_in = 1'b0;
+	#(CLK_CYCLE*DIV)
+		sda_in_en = 1'b0;
 end
 endtask
 
 task gen_ACK_RD_1;
 begin
 	sda_in_en = 1'b0;
-	//sda_in = 1'b1;
 	@(negedge i2c_start)
 		#(CLK_CYCLE*DIV*10)	// SACK1
 			sda_in_en = 1'b1;
 			sda_in = 1'b0;
 		//#(CLK_CYCLE*DIV)
-			//sda_in_en = 1'b0;
-			//sda_in = 1'b1;
+		//	sda_in_en = 1'b0;
+end
+endtask
+
+task gen_ACK_RD_2;
+begin
+	gen_ACK_RD_1;
+	#(CLK_CYCLE*DIV*(8+1+1+8+1))	// SACK1
+		sda_in_en = 1'b1;
+		sda_in = 1'b0;
+	//#(CLK_CYCLE*DIV)
+	//	sda_in_en = 1'b0;
+end
+endtask
+
+task gen_ACK_WR_RD;
+begin
+	gen_ACK_WR_1;
+	#(CLK_CYCLE*DIV*9)	// SACK1
+		sda_in_en = 1'b1;
+		sda_in = 1'b0;
+	// #(CLK_CYCLE*DIV)
+	// 	sda_in_en = 1'b0;
 end
 endtask
 
@@ -137,25 +261,81 @@ endtask
 
 task test_WR_1;
 fork
-	gen_i2c_start_1;
+	gen_i2c_start_1st;
 	gen_addr_WR;
 	gen_data_send_1;
 	gen_ACK_WR_1;
 join
 endtask
 
+task test_WR_2_same;
+fork
+	gen_i2c_start_1st;
+	gen_i2c_start_2nd;
+	gen_addr_WR;
+	gen_data_send_2;
+	gen_ACK_WR_2;
+join
+endtask
+
+task test_WR_2_diff;
+fork
+	gen_i2c_start_1st;
+	gen_i2c_start_2nd;
+	gen_addr_WR_diff;
+	gen_data_send_2;
+	gen_ACK_WR_2_diff;
+join
+endtask
+
 task test_RD_1;
 fork
-	gen_i2c_start_1;
+	gen_i2c_start_1st;
 	gen_addr_RD;
 	gen_data_recv_1;
 	gen_ACK_RD_1;
 join
 endtask
 
+task test_RD_2_same;
+fork
+	gen_i2c_start_1st;
+	gen_i2c_start_2nd;
+	gen_addr_RD;
+	gen_data_recv_2;
+	gen_ACK_RD_1;
+join
+endtask
+
+task test_RD_2_diff;
+fork
+	gen_i2c_start_1st;
+	gen_i2c_start_2nd;
+	gen_addr_RD_diff;
+	gen_data_recv_2_diff;
+	gen_ACK_RD_2;
+join
+endtask
+
+task test_WR_RD;
+fork
+	gen_i2c_start_1st;
+	gen_i2c_start_2nd;
+	gen_addr_WR_RD;
+	gen_data_send_1;
+	gen_ACK_WR_RD;
+	gen_data_recv_2nd;
+join
+endtask
+
 initial begin
 	//test_WR_1;
-	test_RD_1;
+	//test_WR_2_same;
+	//test_WR_2_diff;
+	//test_RD_1;
+	//test_RD_2_same;
+	//test_RD_2_diff;
+	test_WR_RD;
 	gen_finish;
 end
 

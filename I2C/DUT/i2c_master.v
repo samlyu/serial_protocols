@@ -142,7 +142,7 @@ always@(negedge clk_div) begin
 		SACK2:	begin
 			if(sda == 1'b0) begin
 				if(i2c_start_sda)
-					next_state <= addr_rw == {addr_rw} ? WR : START;
+					next_state <= addr_rw == {addr,rw} ? WR : START;
 				else
 					next_state <= STOP;
 			end
@@ -152,7 +152,7 @@ always@(negedge clk_div) begin
 		end
 		MACK:	begin
 			if(i2c_start_sda)
-				next_state <= addr_rw == {addr_rw} ? RD : START;
+				next_state <= addr_rw == {addr,rw} ? RD : START;
 			else
 				next_state <= STOP;
 		end
@@ -185,7 +185,7 @@ always@(posedge clk_sda or negedge arstn) begin
 			end
 			START:	begin
 				bit_count <= 'd0;
-				sda_reg <= 1'b0;
+				//sda_reg <= 1'b0;
 				addr_rw <= {addr, rw};
 				data_recv <= 'd0;
 			end
@@ -209,14 +209,15 @@ always@(posedge clk_sda or negedge arstn) begin
 			SACK2:	begin
 				bit_count <= 'd0;
 				sda_reg <= 1'b1;
+				data_send_reg <= data_send;
 			end
 			MACK:	begin
 				bit_count <= 'd0;
-				sda_reg <= 1'b0;
+				sda_reg <= 1'b1;	// NACK
 			end
 			STOP:	begin
 				bit_count <= 'd0;
-				sda_reg <= 1'b0;
+				//sda_reg <= 1'b1;
 			end
 			default:	begin
 				bit_count <= 'd0;
@@ -224,6 +225,16 @@ always@(posedge clk_sda or negedge arstn) begin
 				data_recv <= 'd0;
 			end
 		endcase
+	end
+end
+
+// generate start/stop condition
+always@(posedge clk) begin
+	if(current_state == START) begin
+		sda_reg <= clk_sda;
+	end
+	if(current_state == STOP) begin
+		sda_reg <= ~clk_sda;
 	end
 end
 
@@ -241,6 +252,7 @@ always@(posedge clk or negedge arstn) begin
 end
 
 // sda
+//assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : ( (current_state == START) ? clk_sda : ( (current_state == STOP) ? ~clk_sda : sda_reg ) );
 assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : sda_reg;
 
 // clk_sda_neg
