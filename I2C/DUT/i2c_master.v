@@ -228,6 +228,7 @@ always@(posedge clk_sda or negedge arstn) begin
 	end
 end
 
+/*
 // generate start/stop condition
 always@(posedge clk) begin
 	if(current_state == START) begin
@@ -237,6 +238,7 @@ always@(posedge clk) begin
 		sda_reg <= ~clk_sda;
 	end
 end
+*/
 
 // data_recv_done
 assign data_recv_done = clk_sda_neg && (current_state == MACK);
@@ -252,8 +254,8 @@ always@(posedge clk or negedge arstn) begin
 end
 
 // sda
-//assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : ( (current_state == START) ? clk_sda : ( (current_state == STOP) ? ~clk_sda : sda_reg ) );
-assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : sda_reg;
+assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : ( (current_state == START) ? clk_sda : ( (current_state == STOP) ? ~clk_sda : sda_reg ) );
+//assign sda = (current_state == SACK1 || current_state == SACK2 || current_state == RD) ? 1'bz : sda_reg;
 
 // clk_sda_neg
 always@(posedge clk or negedge arstn) begin
