@@ -58,7 +58,7 @@ always@(posedge clk or negedge arstn) begin
 	else begin
 		if(clk_count == CLK_DIV/2) begin
 			if(ws_count < WS_DIV-1) begin
-				if(sck == 1'b0 && ws_count > 1 && ws_count <= DATA_WIDTH*2+1) begin
+				if(sck == 1'b0 && ws_count >= 2 && ws_count <= DATA_WIDTH*2+1) begin
 					if(ws == 1'b1)
 						data_recv_right_reg <= {data_recv_right_reg[DATA_WIDTH-2:0], sdi};
 					else
@@ -83,7 +83,7 @@ always@(posedge clk or negedge arstn) begin
 	else begin
 		if(clk_count == CLK_DIV/2) begin
 			if(ws_count < WS_DIV-1) begin
-				if(sck == 1'b1 && ws_count < DATA_WIDTH*2+3) begin
+				if(sck == 1'b1 && ws_count <= DATA_WIDTH*2+1) begin
 					if(ws == 1'b1) begin
 						sdo <= data_send_right_reg[DATA_WIDTH-1];
 						data_send_right_reg <= {data_send_right_reg[DATA_WIDTH-2:0], 1'b0};
