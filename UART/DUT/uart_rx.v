@@ -131,7 +131,7 @@ always@(*) begin
 				next_state = (bit_count == DATA_WIDTH && br_clk) ? STOP : DATA;
 		end
 		PARI:	next_state = br_clk ? STOP : PARI;
-		STOP:	next_state = br_clk ? DONE : STOP;
+		STOP:	next_state = (br_clk & rx_sample[1]) ? DONE : STOP;
 		DONE:	next_state = IDLE;
 		default:	next_state = IDLE;
 	endcase
@@ -192,9 +192,6 @@ always@(posedge clk or negedge arstn) begin
 			STOP:	begin
 				rx_done <= 1'b0;
 				clk_count_en <= 1'b1;
-				if(sample_count == 'd6) begin
-					if(~rx_sample[1])	rx_error <= 1'b1;
-				end
 			end
 			DONE:	begin
 				rx_done <= 1'b1;
