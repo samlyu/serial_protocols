@@ -171,13 +171,13 @@ always@(posedge clk or negedge arstn) begin
 				rx_done <= 1'b0;
 				rx_error <= 1'b0;
 				clk_count_en <= 1'b1;
-				if(sample_en && sample_count == 6)
+				if(sample_en && sample_count == 'd6)
 					rx_data <= {rx_sample[1], rx_data[DATA_WIDTH-1:1]};
 			end
 			PARI:	begin
 				rx_done <= 1'b0;
 				clk_count_en <= 1'b1;
-				if(sample_count == 'd8) begin
+				if(sample_count == 'd6) begin
 					if(PARITY == "EVEN")
 						rx_error <= (^{rx_data, rx_sample[1]} != 1'b0);
 					else if(PARITY == "ODD")
@@ -192,6 +192,9 @@ always@(posedge clk or negedge arstn) begin
 			STOP:	begin
 				rx_done <= 1'b0;
 				clk_count_en <= 1'b1;
+				if(sample_count == 'd6) begin
+					if(~RXD)	rx_error <= 1'b1;
+				end
 			end
 			DONE:	begin
 				rx_done <= 1'b1;
