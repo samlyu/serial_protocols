@@ -74,7 +74,7 @@ always@(*) begin
 		IDLE:	next_state = tx_start ? READY : IDLE;
 		READY:	next_state = shift_en ? START : READY;
 		START:	next_state = shift_en ? SHIFT : START;
-		SHIFT:	next_state = (shift_en && bit_count == DATA_WIDTH-1) ? PARI : SHIFT;
+		SHIFT:	next_state = (shift_en && bit_count == DATA_WIDTH-1) ? ( (PARITY != "NONE") ? PARI : STOP ) : SHIFT;
 		PARI:	next_state = shift_en ? STOP : PARI;
 		STOP:	next_state = shift_en ? DONE : STOP;
 		DONE:	next_state = IDLE;
