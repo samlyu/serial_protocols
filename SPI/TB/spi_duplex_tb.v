@@ -3,10 +3,11 @@
 module spi_duplex_tb();
 
 parameter	CLK_FREQ = 50_000_000,
-			SPI_FREQ = 5_000_000,
+			SPI_FREQ = 100_000,
 			DATA_WIDTH = 8,
-			CPOL = 0,	// 0: idle at 0; 1: idle at 1
-			CPHA = 0;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
+			CLK_CYCLE = 20,
+			CPOL = 1,	// 0: idle at 0; 1: idle at 1
+			CPHA = 1;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
 reg	clk, arstn;
 reg	spi_m_start;
@@ -17,17 +18,14 @@ reg [DATA_WIDTH-1:0]	data_m_send_reg, data_s_send_reg;
 
 // clk
 initial begin
-	clk = 1'b1;
-end
-
-always begin
-	#10 clk = ~clk;
+	clk = 0;
+	forever	#(CLK_CYCLE/2)	clk = ~clk;
 end
 
 // arstn
 initial begin
 	arstn = 1'b0;
-	#20 arstn = 1'b1;
+	#(CLK_CYCLE*3/2)	arstn = 1'b1;
 end
 
 // spi_m_start
@@ -35,11 +33,11 @@ task gen_spi_m_start;
 begin
 	spi_m_start = 1'b0;
 	@(posedge arstn)
-		#20	spi_m_start = 1'b1;
-		#20	spi_m_start = 1'b0;
+		#(CLK_CYCLE*100)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 	@(negedge spi_m_done)
-		#20	spi_m_start = 1'b1;
-		#20	spi_m_start = 1'b0;
+		#(CLK_CYCLE*100)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 end
 endtask
 
@@ -47,9 +45,9 @@ endtask
 task gen_data_m_send;
 begin
 	data_m_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_m_start)
 		data_m_send = 8'hab;
-	@(posedge spi_m_done)
+	@(posedge spi_m_start)
 		data_m_send = 8'hee;
 end
 endtask
@@ -58,13 +56,12 @@ endtask
 task gen_data_s_send;
 begin
 	data_s_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_m_start)
 		data_s_send = 8'hcd;
-	@(posedge spi_s_done)
+	@(posedge spi_m_start)
 		data_s_send = 8'hff;
-	@(negedge spi_s_done);
 	@(negedge spi_s_done)
-		#20 $finish;
+		#(CLK_CYCLE*100) $finish;
 end
 endtask
 
@@ -78,7 +75,7 @@ end
 
 // check mosi
 always@(posedge clk) begin
-	if(spi_m_done & spi_s_done) begin
+	if(spi_s_done) begin
 		if(data_m_send_reg == data_s_recv)
 			$display("PASS: master = %h, slave = %h", data_m_send_reg, data_s_recv);
 		else
@@ -88,7 +85,7 @@ end
 
 // check miso
 always@(posedge clk) begin
-	if(spi_m_done & spi_s_done) begin
+	if(spi_m_done) begin
 		if(data_s_send_reg == data_m_recv)
 			$display("PASS: slave = %h, master = %h", data_s_send_reg, data_m_recv);
 		else

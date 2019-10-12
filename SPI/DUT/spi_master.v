@@ -105,7 +105,12 @@ always@(*) begin
 	case(current_state)
 		IDLE:	next_state = spi_start ? LOAD : IDLE;
 		LOAD:	next_state = PROC;
-		PROC:	next_state = (shift_count == DATA_WIDTH && sample_count == DATA_WIDTH) ? DONE : PROC;
+		PROC:	begin
+			if(CPHA == 0)
+				next_state = (shift_count == DATA_WIDTH && sample_count == DATA_WIDTH) ? DONE : PROC;
+			else
+				next_state = (shift_count == DATA_WIDTH && sample_count == DATA_WIDTH && clk_count == FREQ_COUNT) ? DONE : PROC;
+		end
 		DONE:	next_state = IDLE;
 		default:	next_state = IDLE;
 	endcase
@@ -142,19 +147,21 @@ always@(posedge clk or negedge arstn) begin
 			LOAD:	begin
 				clk_count_en <= 1'b1;
 				spi_done <= 1'b0;
-				csn <= 1'b0;
 				shift_count <= 'd0;
 				sample_count <= 'd0;
 				data_reg <= data_send;
 				data_recv <= 'd0;
+				if(CPHA == 0)	csn <= 1'b0;
+				else			csn <= 1'b1;
 			end
 			PROC:	begin
 				clk_count_en <= 1'b1;
 				spi_done <= 1'b0;
-				csn <= 1'b0;
 				if(shift_en) begin
 					shift_count <= shift_count + 1'b1;
-					data_reg <= {data_reg[DATA_WIDTH-1-1:0], 1'b0};
+					if(CPHA == 1)	csn <= 1'b0;
+					if(CPHA == 0 || (CPHA == 1 && shift_count != 0))
+						data_reg <= {data_reg[DATA_WIDTH-1-1:0], 1'b0};
 				end
 				if(sample_en) begin
 					sample_count <= sample_count + 1'b1;
@@ -168,7 +175,6 @@ always@(posedge clk or negedge arstn) begin
 				shift_count <= 'd0;
 				sample_count <= 'd0;
 				data_reg <= 'd0;
-				// data_recv <= 'd0;
 			end
 			default:	begin
 				clk_count_en <= 1'b0;

@@ -3,10 +3,10 @@
 module spi_master_tb();
 
 parameter	CLK_FREQ = 50_000_000,
-			SPI_FREQ = 5_000_000,
+			SPI_FREQ = 100_000,
 			DATA_WIDTH = 8,
 			CPOL = 0,	// 0: idle at 0; 1: idle at 1
-			CPHA = 0;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
+			CPHA = 1;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
 reg	clk, arstn;
 reg	[DATA_WIDTH-1:0]	data_send;

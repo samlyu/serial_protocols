@@ -118,7 +118,7 @@ always@(posedge clk or negedge arstn) begin
 			end
 			PROC:	begin
 				spi_done <= 1'b0;
-				if(~csn) begin
+				// if(~csn) begin
 					if(shift_en) begin
 						shift_count <= shift_count + 1'b1;
 						data_reg <= {data_reg[DATA_WIDTH-1-1:0], 1'b0};
@@ -127,14 +127,13 @@ always@(posedge clk or negedge arstn) begin
 						sample_count <= sample_count + 1'b1;
 						data_recv <= {data_recv[DATA_WIDTH-1-1:0], mosi};
 					end
-				end
+				// end
 			end
 			DONE:	begin
 				spi_done <= 1'b1;
 				shift_count <= 'd0;
 				sample_count <= 'd0;
 				data_reg <= 'd0;
-				// data_recv <= 'd0;
 			end
 			default:	begin
 				spi_done <= 1'b0;

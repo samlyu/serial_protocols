@@ -6,7 +6,7 @@ parameter	CLK_FREQ = 50_000_000,
 			SPI_FREQ = 5_000_000,
 			DATA_WIDTH = 8,
 			CPOL = 0,	// 0: idle at 0; 1: idle at 1
-			CPHA = 0;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
+			CPHA = 1;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
 parameter CLK_CYCLE = 20;
 
@@ -36,11 +36,11 @@ task gen_spi_m_start;
 begin
 	spi_m_start = 1'b0;
 	@(posedge arstn)
-		#20	spi_m_start = 1'b1;
-		#20	spi_m_start = 1'b0;
+		#(CLK_CYCLE*10)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 	@(negedge spi_m_done)
-		#20	spi_m_start = 1'b1;
-		#20	spi_m_start = 1'b0;
+		#(CLK_CYCLE*10)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 end
 endtask
 
@@ -48,9 +48,9 @@ endtask
 task gen_data_m_send;
 begin
 	data_m_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_m_start)
 		data_m_send = 8'hab;
-	@(posedge spi_m_done)
+	@(posedge spi_m_start)
 		data_m_send = 8'hee;
 end
 endtask
@@ -59,13 +59,12 @@ endtask
 task gen_data_s1_send;
 begin
 	data_s1_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_m_start)
 		data_s1_send = 8'hcd;
-	@(posedge spi_s1_done)
+	@(posedge spi_m_start)
 		data_s1_send = 8'hff;
-	@(negedge spi_s1_done);
 	@(negedge spi_s1_done)
-		#20 $finish;
+		#(CLK_CYCLE) $finish;
 end
 endtask
 
@@ -73,9 +72,9 @@ endtask
 task gen_data_s2_send;
 begin
 	data_s2_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_m_start)
 		data_s2_send = 8'hef;
-	@(posedge spi_s2_done)
+	@(posedge spi_m_start)
 		data_s2_send = 8'haa;
 end
 endtask
@@ -92,7 +91,7 @@ end
 
 // check mosi
 always@(posedge clk) begin
-	if(spi_m_done) begin
+	if(spi_s1_done) begin
 		if(data_m_send_reg == data_s1_recv)
 			$display("PASS: master = %h, slave = %h", data_m_send_reg, data_s1_recv);
 		else
@@ -102,7 +101,7 @@ end
 
 // check s1o->s2i
 always@(posedge clk) begin
-	if(spi_s1_done) begin
+	if(spi_s2_done) begin
 		if(data_s1_send_reg == data_s2_recv)
 			$display("PASS: master = %h, slave = %h", data_s1_send_reg, data_s2_recv);
 		else
@@ -112,7 +111,7 @@ end
 
 // check miso
 always@(posedge clk) begin
-	if(spi_s2_done) begin
+	if(spi_m_done) begin
 		if(data_s2_send_reg == data_m_recv)
 			$display("PASS: master = %h, slave = %h", data_s2_send_reg, data_m_recv);
 		else
