@@ -21,7 +21,8 @@ end
 // arstn
 initial begin
 	arstn = 1'b0;
-	#(CLK_CYCLE)	arstn = 1'b1;
+	@(posedge clk)
+		#(CLK_CYCLE)	arstn = 1'b1;
 end
 
 // fastread_start
@@ -29,11 +30,11 @@ task gen_fastread_start;
 begin
 	fastread_start = 1'b0;
 	@(posedge arstn)
-		#(CLK_CYCLE)	fastread_start = 1'b1;
-		#(CLK_CYCLE)	fastread_start = 1'b0;
+		#(CLK_CYCLE*100)	fastread_start <= 1'b1;
+		#(CLK_CYCLE)	fastread_start <= 1'b0;
 	@(negedge fastread_done)
-		#(CLK_CYCLE)	fastread_start = 1'b1;
-		#(CLK_CYCLE)	fastread_start = 1'b0;
+		#(CLK_CYCLE*100)	fastread_start <= 1'b1;
+		#(CLK_CYCLE)	fastread_start <= 1'b0;
 end
 endtask
 
@@ -41,17 +42,20 @@ endtask
 task gen_fastread_addr;
 begin
 	addr = 'd0;
-	@(posedge arstn)
+	@(posedge fastread_start)
 		addr = 24'haaccee;
-	@(posedge fastread_done)
+	@(posedge fastread_start)
 		addr = 24'hbbddff;
-	@(negedge fastread_done);
 	@(negedge fastread_done)
-		#(CLK_CYCLE)	$finish;
+		#(CLK_CYCLE*100)	$finish;
 end
 endtask
 
 // miso
+initial begin
+	miso = 1'b0;
+end
+
 always@(negedge sclk) begin
 	miso = $random;
 end

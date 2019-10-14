@@ -3,9 +3,10 @@
 module spi_master_tb();
 
 parameter	CLK_FREQ = 50_000_000,
-			SPI_FREQ = 100_000,
+			SPI_FREQ = 5_000_000,
 			DATA_WIDTH = 8,
-			CPOL = 0,	// 0: idle at 0; 1: idle at 1
+			CLK_CYCLE = 20,
+			CPOL = 1,	// 0: idle at 0; 1: idle at 1
 			CPHA = 1;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
 reg	clk, arstn;
@@ -18,17 +19,14 @@ wire	[DATA_WIDTH-1:0]	data_recv;
 
 // clk
 initial begin
-	clk = 1'b1;
-end
-
-always begin
-	#10 clk = ~clk;
+	clk = 0;
+	forever	#(CLK_CYCLE/2)	clk = ~clk;
 end
 
 // arstn
 initial begin
 	arstn = 1'b0;
-	#20	arstn = 1'b1;
+	#(CLK_CYCLE*7/2)	arstn = 1'b1;
 end
 
 // miso
@@ -52,11 +50,11 @@ task gen_spi_start;
 begin
 	spi_start = 1'b0;
 	@(posedge arstn)
-		#20	spi_start = 1'b1;
-		#20	spi_start = 1'b0;
+		#(CLK_CYCLE*15)	spi_start <= 1'b1;
+		#(CLK_CYCLE)	spi_start <= 1'b0;
 	@(negedge spi_done)
-		#20 spi_start = 1'b1;
-		#20	spi_start = 1'b0;
+		#(CLK_CYCLE*15)	spi_start <= 1'b1;
+		#(CLK_CYCLE)	spi_start <= 1'b0;
 end
 endtask
 
@@ -64,13 +62,12 @@ endtask
 task gen_data_send;
 begin
 	data_send = 'd0;
-	@(posedge arstn)
+	@(posedge spi_start)
 		data_send = 8'b10100101;
-	@(posedge spi_done)
+	@(posedge spi_start)
 		data_send = 8'b10011010;
-	@(negedge spi_done);
 	@(negedge spi_done)
-		#20 $finish;
+		#(CLK_CYCLE) $finish;
 end
 endtask
 

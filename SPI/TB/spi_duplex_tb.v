@@ -3,7 +3,7 @@
 module spi_duplex_tb();
 
 parameter	CLK_FREQ = 50_000_000,
-			SPI_FREQ = 100_000,
+			SPI_FREQ = 500_000,
 			DATA_WIDTH = 8,
 			CLK_CYCLE = 20,
 			CPOL = 1,	// 0: idle at 0; 1: idle at 1
@@ -33,10 +33,10 @@ task gen_spi_m_start;
 begin
 	spi_m_start = 1'b0;
 	@(posedge arstn)
-		#(CLK_CYCLE*100)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE*10)	spi_m_start <= 1'b1;
 		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 	@(negedge spi_m_done)
-		#(CLK_CYCLE*100)	spi_m_start <= 1'b1;
+		#(CLK_CYCLE*10)	spi_m_start <= 1'b1;
 		#(CLK_CYCLE)	spi_m_start <= 1'b0;
 end
 endtask
@@ -61,7 +61,7 @@ begin
 	@(posedge spi_m_start)
 		data_s_send = 8'hff;
 	@(negedge spi_s_done)
-		#(CLK_CYCLE*100) $finish;
+		#(CLK_CYCLE*10) $finish;
 end
 endtask
 

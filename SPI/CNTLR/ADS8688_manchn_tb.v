@@ -21,7 +21,8 @@ end
 // arstn
 initial begin
 	arstn = 1'b0;
-	#(CLK_CYCLE*3/2)	arstn = 1'b1;
+	@(posedge clk)
+		#(CLK_CYCLE)	arstn = 1'b1;
 end
 
 // manchn_start
@@ -29,8 +30,8 @@ task gen_manchn_start;
 begin
 	manchn_start = 1'b0;
 	@(posedge arstn)
-		#(CLK_CYCLE)	manchn_start = 1'b1;
-		#(CLK_CYCLE)	manchn_start = 1'b0;
+		#(CLK_CYCLE*15)	manchn_start <= 1'b1;
+		#(CLK_CYCLE)	manchn_start <= 1'b0;
 end
 endtask
 
@@ -38,10 +39,10 @@ endtask
 task gen_chsel;
 begin
 	chsel = 'd0;
-	@(posedge arstn)
+	@(posedge manchn_start)
 		#(CLK_CYCLE)	chsel = 16'hc400;
 	@(negedge manchn_done)
-		#(CLK_CYCLE)	$finish;
+		#(CLK_CYCLE*15)	$finish;
 end
 endtask
 
