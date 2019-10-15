@@ -63,7 +63,7 @@ spi_master
 	.SPI_FREQ(5_000_000),
 	.DATA_WIDTH(16+16),
 	.CPOL(0),	// 0: idle at 0; 1: idle at 1
-	.CPHA(0)	// 0: sample@pos, shift@neg; 1: sample@neg, shift@pos 
+	.CPHA(1)	// 0: sample@pos, shift@neg; 1: sample@neg, shift@pos 
 )
 spi_ctrl(
 	.clk(clk),

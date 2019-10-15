@@ -46,7 +46,10 @@ begin
 end
 endtask
 
-always@(negedge sclk) begin
+initial begin
+	miso = 1'b0;
+end
+always@(posedge sclk) begin
 	miso = $random;
 end
 
