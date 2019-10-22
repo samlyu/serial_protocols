@@ -6,8 +6,8 @@ parameter	CLK_FREQ = 50_000_000,
 			SPI_FREQ = 5_000_000,
 			DATA_WIDTH = 8,
 			CLK_CYCLE = 20,
-			CPOL = 1,	// 0: idle at 0; 1: idle at 1
-			CPHA = 1;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
+			CPOL = 0,	// 0: idle at 0; 1: idle at 1
+			CPHA = 0;	// ^==0: sample@pos, shift@neg; ^==1: sample@neg, shift@pos
 
 reg	clk, arstn;
 reg	[DATA_WIDTH-1:0]	data_send;
